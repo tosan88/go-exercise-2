@@ -7,7 +7,7 @@ Exercising go skills
 ```
 go get -u github.com/tosan88/go-exercise-2
 go build .
-./go-exercise-2 --server="irc-address" --channel="channel-name" --bot-name="bot-name"
+./go-exercise-2 --server="chat.freenode.net:6667" --channel="go-test-bot" --bot-name="test-bot"
 ```
 
 ## Test
@@ -15,3 +15,8 @@ go build .
 ```
 go test -v -race ./...
 ```
+
+### Functional testing
+
+You could install an IRC client of your choice (e.g. Circ, a Google Chrome app) and see how the bot behaves 
+by joining to the same server and channel as the bot.
