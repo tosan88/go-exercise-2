@@ -4,7 +4,7 @@ import (
 	"regexp"
 )
 
-type irc struct {
+type ircMessage struct {
 	initiator string
 	command   string
 	message   string
@@ -13,27 +13,27 @@ type irc struct {
 var normalReply = regexp.MustCompile(`^:([^ ]+) ([^ ]+) (.*)`)
 var statusReply = regexp.MustCompile(`^([^:][^ ]+) :(.*)`)
 
-func extractResponse(response string) (message *irc) {
-	message, extracted := extractNormalReply(response)
+func extractResponse(response string) (msg *ircMessage) {
+	msg, extracted := extractNormalReply(response)
 	if extracted {
 		return
 	}
-	message, extracted = extractStatusReply(response)
+	msg, extracted = extractStatusReply(response)
 	if extracted {
 		return
 	}
 
 	//we couldn't parse it, use whole response as the message
-	message = &irc{
+	msg = &ircMessage{
 		message: response,
 	}
 	return
 }
 
-func extractNormalReply(response string) (message *irc, extracted bool) {
+func extractNormalReply(response string) (msg *ircMessage, extracted bool) {
 	matches := normalReply.FindStringSubmatch(response)
 	if len(matches) == 4 {
-		message = &irc{
+		msg = &ircMessage{
 			initiator: matches[1],
 			command:   matches[2],
 			message:   matches[3],
@@ -42,10 +42,10 @@ func extractNormalReply(response string) (message *irc, extracted bool) {
 	}
 	return
 }
-func extractStatusReply(response string) (message *irc, extracted bool) {
+func extractStatusReply(response string) (msg *ircMessage, extracted bool) {
 	matches := statusReply.FindStringSubmatch(response)
 	if len(matches) == 3 {
-		message = &irc{
+		msg = &ircMessage{
 			command: matches[1],
 			message: matches[2],
 		}

@@ -35,7 +35,7 @@ func main() {
 	botName := app.String(cli.StringOpt{
 		Name:  "bot-name",
 		Value: "test-bot",
-		Desc:  "The nickname for the bot which will be joined to channel",
+		Desc:  "The nickname for the bot which will be joined to channel. Defaults to 'test-bot'",
 	})
 
 	app.Before = func() {
@@ -51,16 +51,11 @@ func main() {
 			log.Printf("Application finished. It was active %v seconds", elapsed.Seconds())
 		}(time.Now())
 
-		client := &botClient{
-			config: conf{
-				server:  *server,
-				channel: *channel,
-				botName: *botName,
-			},
-			registeredBotName: *botName,
-			response:          make(chan string),
-			shouldStop:        make(chan bool),
-		}
+		client := NewClient(&conf{
+			server:  *server,
+			channel: *channel,
+			botName: *botName,
+		})
 
 		var wg sync.WaitGroup
 		wg.Add(1)
@@ -69,14 +64,18 @@ func main() {
 			wg.Done()
 		}()
 
-		shutDownCh := make(chan os.Signal)
-		signal.Notify(shutDownCh, syscall.SIGINT, syscall.SIGTERM)
-
-		<-shutDownCh
+		waitForQuitSignal()
 		client.Stop()
 		wg.Wait()
 	}
 	if err := app.Run(os.Args); err != nil {
 		log.Fatalln(err)
 	}
+}
+
+func waitForQuitSignal() {
+	shutDownCh := make(chan os.Signal) //should I move this to botClient & get rid off shouldStop?
+	signal.Notify(shutDownCh, syscall.SIGINT, syscall.SIGTERM)
+
+	<-shutDownCh
 }

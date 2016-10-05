@@ -11,11 +11,20 @@ import (
 )
 
 type botClient struct {
-	config            conf
+	config            *conf
 	registeredBotName string
 	conn              net.Conn
 	response          chan string
 	shouldStop        chan bool
+}
+
+func NewClient(config *conf) *botClient {
+	return &botClient{
+		config:            config,
+		registeredBotName: config.botName,
+		response:          make(chan string),
+		shouldStop:        make(chan bool),
+	}
 }
 
 func (c *botClient) Run() {
@@ -62,14 +71,12 @@ func (c *botClient) communicate() {
 			log.Printf("DEBUG - %+v", message)
 
 			c.handleMessageCommand(message)
-		default:
-			//do nothing
 		}
 	}
 }
 
 //https://www.alien.net.au/irc/irc2numerics.html
-func (c *botClient) handleMessageCommand(message *irc) {
+func (c *botClient) handleMessageCommand(message *ircMessage) {
 	switch message.command {
 	case "001":
 		fallthrough
