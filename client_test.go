@@ -34,29 +34,34 @@ func TestHandleMessage(t *testing.T) {
 
 	clientConn, err := net.Dial("tcp", ":3000")
 	assert.Nil(err)
-	defer clientConn.Close()
+	defer func() {
+		if clientConn != nil {
+			clientConn.Close()
+		}
+		fmt.Println("Client connection stopped")
+	}()
 
 	ircChannel := "test-your-client"
 	testCases := []testCase{
 		{"logged successful join to server, command 001",
 			ircMessage{command: "001"},
 			"",
-			botClient{conn: clientConn, config: conf{server: "test"}},
+			botClient{conn: clientConn, config: &conf{server: "test"}},
 			"Successfully joined to server test"},
 		{"logged successful join to server, command RPL_WELCOME",
 			ircMessage{command: "RPL_WELCOME"},
 			"",
-			botClient{conn: clientConn, config: conf{server: "test"}},
+			botClient{conn: clientConn, config: &conf{server: "test"}},
 			"Successfully joined to server test"},
 		{"send request to join channel, command 376",
 			ircMessage{command: "376"},
 			fmt.Sprintf("JOIN #%v\n", ircChannel),
-			botClient{conn: clientConn, config: conf{channel: ircChannel}},
+			botClient{conn: clientConn, config: &conf{channel: ircChannel}},
 			""},
 		{"send request to join channel, command RPL_ENDOFMOTD",
 			ircMessage{command: "RPL_ENDOFMOTD"},
 			fmt.Sprintf("JOIN #%v\n", ircChannel),
-			botClient{conn: clientConn, config: conf{channel: ircChannel}},
+			botClient{conn: clientConn, config: &conf{channel: ircChannel}},
 			""},
 		{"send pong response",
 			ircMessage{command: "PING", message: "1234"},
@@ -66,27 +71,27 @@ func TestHandleMessage(t *testing.T) {
 		{"send greeting to newcomer",
 			ircMessage{command: "JOIN", initiator: "newcomer!home@home"},
 			fmt.Sprintf("PRIVMSG #%v :Welcome in this channel newcomer\n", ircChannel),
-			botClient{conn: clientConn, registeredBotName: "test-bot", config: conf{channel: ircChannel}},
+			botClient{conn: clientConn, registeredBotName: "test-bot", config: &conf{channel: ircChannel}},
 			""},
 		{"log successful join to channel",
 			ircMessage{command: "JOIN", initiator: "test-bot!home@home"},
 			"",
-			botClient{conn: clientConn, registeredBotName: "test-bot", config: conf{channel: ircChannel}},
+			botClient{conn: clientConn, registeredBotName: "test-bot", config: &conf{channel: ircChannel}},
 			fmt.Sprintf("Successfully joined to channel #%v as %v\n", ircChannel, "test-bot")},
 		{"send new nick upon collision, command ERR_NICKCOLLISION",
 			ircMessage{command: "ERR_NICKCOLLISION"},
 			"NICK test-bot",
-			botClient{conn: clientConn, registeredBotName: "test-bot", config: conf{botName: "test-bot"}},
+			botClient{conn: clientConn, registeredBotName: "test-bot", config: &conf{botName: "test-bot"}},
 			"Bot name could not be used. Adding suffix"},
 		{"send new nick upon nick name used, command ERR_NICKNAMEINUSE",
 			ircMessage{command: "ERR_NICKNAMEINUSE"},
 			"NICK test-bot",
-			botClient{conn: clientConn, registeredBotName: "test-bot", config: conf{botName: "test-bot"}},
+			botClient{conn: clientConn, registeredBotName: "test-bot", config: &conf{botName: "test-bot"}},
 			"Bot name could not be used. Adding suffix"},
 		{"send new nick upon nick name used, command 433",
 			ircMessage{command: "433"},
 			"NICK test-bot",
-			botClient{conn: clientConn, registeredBotName: "test-bot", config: conf{botName: "test-bot"}},
+			botClient{conn: clientConn, registeredBotName: "test-bot", config: &conf{botName: "test-bot"}},
 			"Bot name could not be used. Adding suffix"},
 	}
 
@@ -123,7 +128,12 @@ func startServer(wg *sync.WaitGroup, assert *assert.Assertions, listenCh chan st
 	if err != nil {
 		return
 	}
-	defer conn.Close()
+	defer func() {
+		if conn != nil {
+			conn.Close()
+		}
+		fmt.Println("Server connection stopped")
+	}()
 	for {
 		buf := bufio.NewReader(conn)
 		line, err := buf.ReadString('\n')
