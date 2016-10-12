@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"regexp"
 	"sync"
 	"syscall"
 	"time"
@@ -42,6 +43,12 @@ func main() {
 		if *server == "" || *channel == "" {
 			app.PrintHelp()
 			log.Fatalln("Server or channel paramaters are not set!")
+		}
+		if !regexp.MustCompile("^[a-zA-Z0-9_-]{3,16}$").MatchString(*botName) {
+			app.PrintHelp()
+			log.Fatalf("Bot name %v is invalid.\n"+
+				"It must contain only alphanumberic characters or dash or underscore and "+
+				"should be between 3 and 16 characters\n", *botName)
 		}
 	}
 

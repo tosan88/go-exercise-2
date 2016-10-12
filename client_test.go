@@ -11,6 +11,7 @@ import (
 	"net"
 	"sync"
 	"time"
+	"io"
 )
 
 type testCase struct {
@@ -71,7 +72,7 @@ func TestHandleMessage(t *testing.T) {
 		{"send greeting to newcomer",
 			ircMessage{command: "JOIN", initiator: "newcomer!home@home"},
 			fmt.Sprintf("PRIVMSG #%v :Welcome in this channel newcomer\n", ircChannel),
-			botClient{conn: clientConn, registeredBotName: "test-bot", config: &conf{channel: ircChannel}},
+			botClient{conn: clientConn, registeredBotName: "test-bot", config: &conf{channel: ircChannel}, names: make(map[string]struct{})},
 			""},
 		{"log successful join to channel",
 			ircMessage{command: "JOIN", initiator: "test-bot!home@home"},
@@ -137,6 +138,9 @@ func startServer(wg *sync.WaitGroup, assert *assert.Assertions, listenCh chan st
 	for {
 		buf := bufio.NewReader(conn)
 		line, err := buf.ReadString('\n')
+		if err == io.EOF {
+			break
+		}
 		assert.Nil(err)
 
 		listenCh <- line
