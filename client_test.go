@@ -7,11 +7,11 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/stretchr/testify/assert"
+	"io"
 	"log"
 	"net"
 	"sync"
 	"time"
-	"io"
 )
 
 type testCase struct {
@@ -47,52 +47,42 @@ func TestHandleMessage(t *testing.T) {
 		{"logged successful join to server, command 001",
 			ircMessage{command: "001"},
 			"",
-			botClient{conn: clientConn, config: &conf{server: "test"}},
-			"Successfully joined to server test"},
-		{"logged successful join to server, command RPL_WELCOME",
-			ircMessage{command: "RPL_WELCOME"},
-			"",
-			botClient{conn: clientConn, config: &conf{server: "test"}},
+			botClient{conn: clientConn, config: &conf{server: "test"}, handlers: getHandlers()},
 			"Successfully joined to server test"},
 		{"send request to join channel, command 376",
 			ircMessage{command: "376"},
 			fmt.Sprintf("JOIN #%v\n", ircChannel),
-			botClient{conn: clientConn, config: &conf{channel: ircChannel}},
-			""},
-		{"send request to join channel, command RPL_ENDOFMOTD",
-			ircMessage{command: "RPL_ENDOFMOTD"},
-			fmt.Sprintf("JOIN #%v\n", ircChannel),
-			botClient{conn: clientConn, config: &conf{channel: ircChannel}},
+			botClient{conn: clientConn, config: &conf{channel: ircChannel}, handlers: getHandlers()},
 			""},
 		{"send pong response",
 			ircMessage{command: "PING", message: "1234"},
 			"PONG :1234\n",
-			botClient{conn: clientConn},
+			botClient{conn: clientConn, handlers: getHandlers()},
 			"Sending PONG response"},
 		{"send greeting to newcomer",
 			ircMessage{command: "JOIN", initiator: "newcomer!home@home"},
 			fmt.Sprintf("PRIVMSG #%v :Welcome in this channel newcomer\n", ircChannel),
-			botClient{conn: clientConn, registeredBotName: "test-bot", config: &conf{channel: ircChannel}, names: make(map[string]*user)},
+			botClient{conn: clientConn, registeredBotName: "test-bot", config: &conf{channel: ircChannel}, names: make(map[string]*user), handlers: getHandlers()},
 			""},
 		{"log successful join to channel",
 			ircMessage{command: "JOIN", initiator: "test-bot!home@home"},
 			"",
-			botClient{conn: clientConn, registeredBotName: "test-bot", config: &conf{channel: ircChannel}},
+			botClient{conn: clientConn, registeredBotName: "test-bot", config: &conf{channel: ircChannel}, handlers: getHandlers()},
 			fmt.Sprintf("Successfully joined to channel #%v as %v\n", ircChannel, "test-bot")},
 		{"send new nick upon collision, command ERR_NICKCOLLISION",
 			ircMessage{command: "ERR_NICKCOLLISION"},
 			"NICK test-bot",
-			botClient{conn: clientConn, registeredBotName: "test-bot", config: &conf{botName: "test-bot"}},
+			botClient{conn: clientConn, registeredBotName: "test-bot", config: &conf{botName: "test-bot"}, handlers: getHandlers()},
 			"Bot name could not be used. Adding suffix"},
 		{"send new nick upon nick name used, command ERR_NICKNAMEINUSE",
 			ircMessage{command: "ERR_NICKNAMEINUSE"},
 			"NICK test-bot",
-			botClient{conn: clientConn, registeredBotName: "test-bot", config: &conf{botName: "test-bot"}},
+			botClient{conn: clientConn, registeredBotName: "test-bot", config: &conf{botName: "test-bot"}, handlers: getHandlers()},
 			"Bot name could not be used. Adding suffix"},
 		{"send new nick upon nick name used, command 433",
 			ircMessage{command: "433"},
 			"NICK test-bot",
-			botClient{conn: clientConn, registeredBotName: "test-bot", config: &conf{botName: "test-bot"}},
+			botClient{conn: clientConn, registeredBotName: "test-bot", config: &conf{botName: "test-bot"}, handlers: getHandlers()},
 			"Bot name could not be used. Adding suffix"},
 	}
 
@@ -106,7 +96,7 @@ func TestHandleMessage(t *testing.T) {
 func runTestCase(tc *testCase, assert *assert.Assertions, listenCh chan string) {
 	var buf bytes.Buffer
 	log.SetOutput(&buf)
-	tc.client.handleMessageCommand(&tc.msg)
+	tc.client.handleCommand(&tc.msg)
 
 	if tc.response != "" {
 		response := <-listenCh

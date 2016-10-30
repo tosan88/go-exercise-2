@@ -1,5 +1,24 @@
 package main
 
+//https://www.alien.net.au/irc/irc2numerics.html
+const (
+	RPL_WELCOME              = "001"
+	RPL_ENDOFMOTD            = "376"
+	PING                     = "PING"
+	JOIN                     = "JOIN"
+	MESSAGE_CMD              = "PRIVMSG"
+	RPL_NAMREPLY             = "353"
+	KICK                     = "KICK"
+	PART                     = "PART"
+	QUIT                     = "QUIT"
+	ERR_ERRONEUSNICKNAME     = "ERR_ERRONEUSNICKNAME"
+	ERR_ERRONEUSNICKNAME_NUM = "432"
+	ERR_NICKNAMEINUSE        = "ERR_NICKNAMEINUSE"
+	ERR_NICKNAMEINUSE_NUM    = "433"
+	ERR_NICKCOLLISION        = "ERR_NICKCOLLISION"
+	ERR_NICKCOLLISION_NUM    = "436"
+)
+
 var randomText = []string{
 	`Cats can drink salt water to survive: their kidneys can filter out salt!`,
 	`Cats sleep for about 70% of their lives.`,

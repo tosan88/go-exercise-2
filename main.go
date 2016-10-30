@@ -44,11 +44,12 @@ func main() {
 			app.PrintHelp()
 			log.Fatalln("Server or channel paramaters are not set!")
 		}
-		if !regexp.MustCompile("^[a-zA-Z0-9_-]{3,16}$").MatchString(*botName) {
+		if !regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9_-]{2,7}$").MatchString(*botName) {
 			app.PrintHelp()
 			log.Fatalf("Bot name %v is invalid.\n"+
-				"It must contain only alphanumberic characters or dash or underscore and "+
-				"should be between 3 and 16 characters\n", *botName)
+				"It must contain only alphanumberic characters, dash or underscore; "+
+				"the first letter should be a letter from alphabet and the bot name "+
+				"should be between 3 and 8 characters\n", *botName)
 		}
 	}
 
@@ -58,7 +59,7 @@ func main() {
 			log.Printf("Application finished. It was active %v seconds", elapsed.Seconds())
 		}(time.Now())
 
-		client := NewClient(&conf{
+		client := newClient(&conf{
 			server:  *server,
 			channel: *channel,
 			botName: *botName,
