@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"database/sql"
 	"fmt"
 	"log"
 	"math/rand"
@@ -13,6 +14,7 @@ import (
 type handler func(*botClient, *ircMessage)
 
 type user struct {
+	name      string
 	available bool
 	lastSeen  time.Time
 }
@@ -23,17 +25,17 @@ type botClient struct {
 	conn              net.Conn
 	response          chan string
 	shouldStop        chan bool
-	names             map[string]*user
+	namesDB           *sql.DB
 	handlers          map[string]handler
 }
 
-func newClient(config *conf) *botClient {
+func newClient(config *conf, namesDB *sql.DB) *botClient {
 	return &botClient{
 		config:            config,
 		registeredBotName: config.botName,
 		response:          make(chan string),
 		shouldStop:        make(chan bool),
-		names:             make(map[string]*user),
+		namesDB:           namesDB,
 		handlers:          getHandlers(),
 	}
 }

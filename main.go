@@ -1,7 +1,9 @@
 package main
 
 import (
+	"database/sql"
 	"github.com/jawher/mow.cli"
+	_ "github.com/mattn/go-sqlite3"
 	"log"
 	"os"
 	"os/signal"
@@ -39,6 +41,12 @@ func main() {
 		Desc:  "The nickname for the bot which will be joined to channel. Defaults to 'test-bot'",
 	})
 
+	dbFileName := app.String(cli.StringOpt{
+		Name:  "db-file-name",
+		Value: "names.db",
+		Desc:  "The DB file name to save names to",
+	})
+
 	app.Before = func() {
 		if *server == "" || *channel == "" {
 			app.PrintHelp()
@@ -59,11 +67,25 @@ func main() {
 			log.Printf("Application finished. It was active %v seconds", elapsed.Seconds())
 		}(time.Now())
 
+		db, err := sql.Open("sqlite3", *dbFileName)
+		if err != nil {
+			log.Fatalf("Error opening DB: %v\n", err)
+		}
+		defer db.Close()
+		sqlStmt := `create table if not exists names (name text not null primary key, available bool, last_seen text);
+		delete from names;`
+		_, err = db.Exec(sqlStmt)
+
+		if err != nil {
+			log.Fatalf("Error by creating names table: %v\n", err)
+			return
+		}
+
 		client := newClient(&conf{
 			server:  *server,
 			channel: *channel,
 			botName: *botName,
-		})
+		}, db)
 
 		var wg sync.WaitGroup
 		wg.Add(1)

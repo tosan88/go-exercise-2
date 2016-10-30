@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
 	"math/rand"
@@ -53,7 +54,7 @@ func (c *botClient) handleJoinCommand(message *ircMessage) {
 		return
 	}
 	initiator := strings.Split(message.initiator, "!")[0]
-	c.names[initiator] = &user{available: true}
+	c.addUserToDB(&user{available: true, lastSeen: time.Now(), name: initiator})
 	fmt.Fprintf(c.conn, "PRIVMSG #%v :Welcome in this channel %v\n", c.config.channel, initiator)
 }
 
@@ -71,9 +72,11 @@ func (c *botClient) handleUserMessageCommand(message *ircMessage) {
 	}
 	if c.isUserCommand(message, "seen") {
 		c.handleNotSeenUserCommand(initiator, message)
+		return
 	}
 	if c.isUserCommand(message, "cat fact") {
-		c.handleCatFactUserCommand(message)
+		c.handleCatFactUserCommand(initiator, message)
+		return
 	}
 	if strings.HasPrefix(message.message, c.registeredBotName+" ") {
 		fmt.Fprintf(c.conn, "PRIVMSG %v :Hello %v, I'm afraid I can't understand you, I'm just a bot...\n", initiator, initiator)
@@ -99,31 +102,30 @@ func (c *botClient) handleNotSeenUserCommand(initiator string, message *ircMessa
 	}
 
 	nick := splitCommand[2]
-	usr, found := c.names[nick]
-	if !found {
+	usr, err := c.getUserFromDB(nick)
+	if err != nil && err != sql.ErrNoRows {
+		log.Printf("ERROR - getting user %v: %v\n", nick, err)
+	}
+
+	if usr.name == "" {
 		fmt.Fprintf(c.conn, "PRIVMSG %v :Hello %v, unfortunately there are no records about %v\n", location, initiator, nick)
 		return
 	}
 
 	if usr.available {
-		fmt.Fprintf(c.conn, "PRIVMSG %v :Hello %v, %v is still present in this channel\n", location, initiator, nick)
+		fmt.Fprintf(c.conn, "PRIVMSG %v :Hello %v, %v is still present in %v channel\n", location, initiator, nick, c.config.channel)
 	} else {
-		fmt.Fprintf(c.conn, "PRIVMSG %v :Hello %v, %v was last seen on %v at %v\n", location, initiator, nick, c.config.channel, usr.lastSeen)
+		fmt.Fprintf(c.conn, "PRIVMSG %v :Hello %v, %v was last seen on %v channel at %v\n", location, initiator, nick, c.config.channel, usr.lastSeen)
 	}
 }
 
-func (c *botClient) handleCatFactUserCommand(message *ircMessage) {
-	var randomName string
-	idx := rand.Intn(len(c.names))
-	counter := 0
-	for name := range c.names {
-		if counter == idx {
-			randomName = name
-			break
-		}
-		counter++
+func (c *botClient) handleCatFactUserCommand(initiator string, message *ircMessage) {
+	splitCommand := strings.Split(message.message, " ")
+	location := splitCommand[0]
+	if location != fmt.Sprintf("#%v", c.config.channel) {
+		location = initiator
 	}
-	fmt.Fprintf(c.conn, "PRIVMSG #%v :Check this out, %v - %v\n", c.config.channel, randomName, randomText[rand.Intn(len(randomText))])
+	fmt.Fprintf(c.conn, "PRIVMSG %v :%v\n", location, randomText[rand.Intn(len(randomText))])
 
 }
 func (c *botClient) handleNamesReply(message *ircMessage) {
@@ -131,23 +133,29 @@ func (c *botClient) handleNamesReply(message *ircMessage) {
 	if len(split) == 2 {
 		names := strings.Split(split[1], " ")
 		for _, name := range names {
-			c.names[strings.TrimPrefix(name, "@")] = &user{available: true}
+			usrName := strings.TrimPrefix(name, "@")
+			usr := &user{available: true, name: usrName, lastSeen: time.Now()}
+
+			storedUsr, err := c.getUserFromDB(usrName)
+			if err != nil && err != sql.ErrNoRows {
+				log.Printf("ERROR - getting user %v: %v\n", usrName, err)
+				continue
+			}
+			if storedUsr.name == "" {
+				c.addUserToDB(usr)
+			}
 		}
 	}
 }
 
 func (c *botClient) handleKickCommand(message *ircMessage) {
 	initiator := strings.Split(message.initiator, "!")[0]
+	kicked := strings.Split(message.message, " ")[1]
+	c.modifyUserInDB(&user{name: kicked, available: false, lastSeen: time.Now()})
 	fmt.Fprintf(c.conn, "PRIVMSG %v :That was rude!\n", initiator)
 }
 
 func (c *botClient) handleUserDeparture(message *ircMessage) {
 	initiator := strings.Split(message.initiator, "!")[0]
-	usr, found := c.names[initiator]
-	if !found {
-		log.Printf("WARN - Logical error. %v quit but was not in the channel :-/\n", initiator)
-		return
-	}
-	usr.available = false
-	usr.lastSeen = time.Now()
+	c.modifyUserInDB(&user{name: initiator, available: false, lastSeen: time.Now()})
 }
