@@ -11,13 +11,18 @@ import (
 	"time"
 )
 
+type user struct {
+	available bool
+	lastSeen time.Time
+}
+
 type botClient struct {
 	config            *conf
 	registeredBotName string
 	conn              net.Conn
 	response          chan string
 	shouldStop        chan bool
-	names             map[string]struct{}
+	names             map[string]*user
 }
 
 func NewClient(config *conf) *botClient {
@@ -26,7 +31,7 @@ func NewClient(config *conf) *botClient {
 		registeredBotName: config.botName,
 		response:          make(chan string),
 		shouldStop:        make(chan bool),
-		names:             make(map[string]struct{}),
+		names:             make(map[string]*user),
 	}
 }
 
@@ -43,11 +48,11 @@ func (c *botClient) Run() {
 		for {
 			serverResponse, err := reader.ReadString('\n')
 			if err == io.EOF {
+				log.Fatalf("EOF - %v\n", err) //TODO might never appear
 				break
 			}
 			if err != nil {
-				//could be this really fatal?
-				log.Fatalf("%v\n", err)
+				log.Fatalf("NOT EOF - %v\n", err) //TODO handle differently?
 			}
 			c.response <- serverResponse
 		}
@@ -99,7 +104,7 @@ func (c *botClient) handleMessageCommand(message *ircMessage) {
 			break
 		}
 		initiator := strings.Split(message.initiator, "!")[0]
-		c.names[initiator] = struct{}{}
+		c.names[initiator] = &user{available:true}
 		fmt.Fprintf(c.conn, "PRIVMSG #%v :Welcome in this channel %v\n", c.config.channel, initiator)
 	case "432":
 		fallthrough
@@ -117,7 +122,24 @@ func (c *botClient) handleMessageCommand(message *ircMessage) {
 		log.Printf("Bot name could not be used. Adding suffix '%v' and retrying as %v\n", suffix, c.registeredBotName)
 		fmt.Fprintf(c.conn, "NICK %v\n", c.registeredBotName)
 	case "PRIVMSG":
+		//TODO polish things
 		initiator := strings.Split(message.initiator, "!")[0]
+		if initiator != c.registeredBotName{
+			if strings.HasPrefix(message.message, fmt.Sprintf("#%v :!seen ", c.config.channel)) {
+				nick := strings.Split(message.message, " ")[2]
+				usr, found := c.names[nick]
+				if !found {
+					fmt.Fprintf(c.conn, "PRIVMSG #%v :Hello %v, unfortunately there are no records about %v\n", c.config.channel, initiator, nick)
+					break
+				}
+				if usr.available {
+					fmt.Fprintf(c.conn, "PRIVMSG #%v :Hello %v, %v is still present in this channel\n", c.config.channel, initiator, nick)
+				} else {
+					fmt.Fprintf(c.conn, "PRIVMSG #%v :Hello %v, %v was last seen on %v at %v\n", c.config.channel, initiator, nick, c.config.channel, usr.lastSeen)
+				}
+				break
+			}
+		}
 		if strings.HasPrefix(message.message, c.registeredBotName+" ") && rand.Intn(100)%3 == 0 {
 			fmt.Fprintf(c.conn, "PRIVMSG %v :Hello %v, I'm afraid I can't understand you, I'm just a bot...\n", initiator, initiator)
 			break
@@ -140,18 +162,29 @@ func (c *botClient) handleMessageCommand(message *ircMessage) {
 			fmt.Fprintf(c.conn, "PRIVMSG #%v :Check this out, %v - %v\n", c.config.channel, randomName, randomText[rand.Intn(len(randomText))])
 			break
 		}
-	case "353":
+	case "353": //RPL_NAMREPLY
 		split := strings.Split(message.message, ":")
 		if len(split) == 2 {
 			names := strings.Split(split[1], " ")
 			for _, name := range names {
-				c.names[strings.TrimPrefix(name,"@")] = struct{}{}
+				c.names[strings.TrimPrefix(name,"@")] = &user{available:true}
 			}
 			log.Printf("DEBUG - Names: %v\n", c.names)
 		}
 	case "KICK":
 		initiator := strings.Split(message.initiator, "!")[0]
 		fmt.Fprintf(c.conn, "PRIVMSG %v :That was rude!\n", initiator)
+	case "PART":
+		fallthrough
+	case "QUIT":
+		initiator := strings.Split(message.initiator, "!")[0]
+		usr, found := c.names[initiator]
+		if !found {
+			log.Printf("WARN - Logical error. %v quit who was not in the channel :-/\n", initiator)
+			break
+		}
+		usr.available = false
+		usr.lastSeen = time.Now()
 	default:
 		//do nothing
 	}

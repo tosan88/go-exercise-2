@@ -72,7 +72,7 @@ func TestHandleMessage(t *testing.T) {
 		{"send greeting to newcomer",
 			ircMessage{command: "JOIN", initiator: "newcomer!home@home"},
 			fmt.Sprintf("PRIVMSG #%v :Welcome in this channel newcomer\n", ircChannel),
-			botClient{conn: clientConn, registeredBotName: "test-bot", config: &conf{channel: ircChannel}, names: make(map[string]struct{})},
+			botClient{conn: clientConn, registeredBotName: "test-bot", config: &conf{channel: ircChannel}, names: make(map[string]*user)},
 			""},
 		{"log successful join to channel",
 			ircMessage{command: "JOIN", initiator: "test-bot!home@home"},
