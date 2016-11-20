@@ -3,6 +3,6 @@ dependencies:
     - go get github.com/axw/gocov/gocov; go get github.com/matm/gocov-html
 test:
   override:
-    - gocov test ./... > coverage.json
+    - gocov test -race -v ./... > coverage.json
   post:
     - gocov-html coverage.json > $CIRCLE_ARTIFACTS/coverage.html

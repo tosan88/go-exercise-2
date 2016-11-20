@@ -1,23 +1,6 @@
-package main
+package bot
 
-//https://www.alien.net.au/irc/irc2numerics.html
-const (
-	RPL_WELCOME              = "001"
-	RPL_ENDOFMOTD            = "376"
-	PING                     = "PING"
-	JOIN                     = "JOIN"
-	MESSAGE_CMD              = "PRIVMSG"
-	RPL_NAMREPLY             = "353"
-	KICK                     = "KICK"
-	PART                     = "PART"
-	QUIT                     = "QUIT"
-	ERR_ERRONEUSNICKNAME     = "ERR_ERRONEUSNICKNAME"
-	ERR_ERRONEUSNICKNAME_NUM = "432"
-	ERR_NICKNAMEINUSE        = "ERR_NICKNAMEINUSE"
-	ERR_NICKNAMEINUSE_NUM    = "433"
-	ERR_NICKCOLLISION        = "ERR_NICKCOLLISION"
-	ERR_NICKCOLLISION_NUM    = "436"
-)
+import "math/rand"
 
 var randomText = []string{
 	`Cats can drink salt water to survive: their kidneys can filter out salt!`,
@@ -61,4 +44,8 @@ var randomText = []string{
 	`Every cat's nose is unique, and no two nose-prints are the same.`,
 	`Cats rub against people to mark them as their territory.`,
 	`When cats are happy or pleased, they momentarily squeeze their eyes shut.`,
+}
+
+func GetCatFact() string {
+	return randomText[rand.Intn(len(randomText))]
 }

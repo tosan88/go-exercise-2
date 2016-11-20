@@ -1,6 +1,6 @@
 [![CircleCI](https://circleci.com/gh/tosan88/go-exercise-2.svg?style=shield)](https://circleci.com/gh/tosan88/go-exercise-2)
 # go-exercise-2
-Exercising go skills
+An IRC bot which reacts to user interactions with an IRC channel.
 
 ## Install & run
 

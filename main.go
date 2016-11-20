@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"github.com/jawher/mow.cli"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/tosan88/go-exercise-2/bot"
+	"github.com/tosan88/go-exercise-2/storage"
 	"log"
 	"os"
 	"os/signal"
@@ -12,12 +14,6 @@ import (
 	"syscall"
 	"time"
 )
-
-type conf struct {
-	server  string
-	channel string
-	botName string
-}
 
 func main() {
 	log.Printf("Application starting with args %s", os.Args)
@@ -43,8 +39,8 @@ func main() {
 
 	dbFileName := app.String(cli.StringOpt{
 		Name:  "db-file-name",
-		Value: "names.db",
-		Desc:  "The DB file name to save names to",
+		Value: "my.db",
+		Desc:  "The DB file name to save internal state",
 	})
 
 	app.Before = func() {
@@ -52,12 +48,12 @@ func main() {
 			app.PrintHelp()
 			log.Fatalln("Server or channel paramaters are not set!")
 		}
-		if !regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9_-]{2,7}$").MatchString(*botName) {
+		if !regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9_-]{2,9}$").MatchString(*botName) {
 			app.PrintHelp()
 			log.Fatalf("Bot name %v is invalid.\n"+
 				"It must contain only alphanumberic characters, dash or underscore; "+
 				"the first letter should be a letter from alphabet and the bot name "+
-				"should be between 3 and 8 characters\n", *botName)
+				"should be between 3 and 10 characters\n", *botName)
 		}
 	}
 
@@ -67,24 +63,23 @@ func main() {
 			log.Printf("Application finished. It was active %v seconds", elapsed.Seconds())
 		}(time.Now())
 
-		db, err := sql.Open("sqlite3", *dbFileName)
+		sqliteDB, err := sql.Open("sqlite3", *dbFileName)
 		if err != nil {
 			log.Fatalf("Error opening DB: %v\n", err)
 		}
-		defer db.Close()
-		sqlStmt := `create table if not exists names (name text not null primary key, available bool, last_seen text);
-		delete from names;`
-		_, err = db.Exec(sqlStmt)
+		defer sqliteDB.Close()
 
+		db := storage.DB{DB: sqliteDB}
+		err = db.CreateSchema()
 		if err != nil {
-			log.Fatalf("Error by creating names table: %v\n", err)
+			log.Fatalf("Error by creating schema: %v\n", err)
 			return
 		}
 
-		client := newClient(&conf{
-			server:  *server,
-			channel: *channel,
-			botName: *botName,
+		client := bot.New(&bot.Conf{
+			Server:  *server,
+			Channel: *channel,
+			BotName: *botName,
 		}, db)
 
 		var wg sync.WaitGroup

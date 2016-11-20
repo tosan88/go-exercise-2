@@ -1,4 +1,4 @@
-package main
+package irc
 
 import (
 	"testing"
@@ -16,9 +16,9 @@ func TestExtractNormalReply(t *testing.T) {
 		t.Fatal("Failed to extract values")
 	}
 
-	assert.Equal("adams.freenode.net", out.initiator)
-	assert.Equal("NOTICE", out.command)
-	assert.Equal("* :*** No Ident response", out.message)
+	assert.Equal("adams.freenode.net", out.Prefix)
+	assert.Equal("NOTICE", out.Command)
+	assert.Equal("* :*** No Ident response", out.Parameter)
 }
 
 func TestExtractStatusReply(t *testing.T) {
@@ -31,40 +31,40 @@ func TestExtractStatusReply(t *testing.T) {
 		t.Fatal("Failed to extract values")
 	}
 
-	assert.Equal("", out.initiator)
-	assert.Equal("PING", out.command)
-	assert.Equal("adams.freenode.net", out.message)
+	assert.Equal("", out.Prefix)
+	assert.Equal("PING", out.Command)
+	assert.Equal("adams.freenode.net", out.Parameter)
 }
 
 func TestExtractResponseNormalReply(t *testing.T) {
 	assert := assert.New(t)
 
 	in := ":adams.freenode.net NOTICE * :*** No Ident response"
-	out := extractResponse(in)
+	out := ExtractResponse(in)
 
-	assert.Equal("adams.freenode.net", out.initiator)
-	assert.Equal("NOTICE", out.command)
-	assert.Equal("* :*** No Ident response", out.message)
+	assert.Equal("adams.freenode.net", out.Prefix)
+	assert.Equal("NOTICE", out.Command)
+	assert.Equal("* :*** No Ident response", out.Parameter)
 }
 
 func TestExtractResponseStatusReply(t *testing.T) {
 	assert := assert.New(t)
 
 	in := "PING :adams.freenode.net\n"
-	out := extractResponse(in)
+	out := ExtractResponse(in)
 
-	assert.Equal("", out.initiator)
-	assert.Equal("PING", out.command)
-	assert.Equal("adams.freenode.net", out.message)
+	assert.Equal("", out.Prefix)
+	assert.Equal("PING", out.Command)
+	assert.Equal("adams.freenode.net", out.Parameter)
 }
 
 func TestExtractResponseUnconventional(t *testing.T) {
 	assert := assert.New(t)
 
 	in := "This is not an IRC server"
-	out := extractResponse(in)
+	out := ExtractResponse(in)
 
-	assert.Equal("", out.initiator)
-	assert.Equal("", out.command)
-	assert.Equal("This is not an IRC server", out.message)
+	assert.Equal("", out.Prefix)
+	assert.Equal("", out.Command)
+	assert.Equal("This is not an IRC server", out.Parameter)
 }
