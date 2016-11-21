@@ -4,7 +4,10 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/tosan88/go-exercise-2/irc"
+	"golang.org/x/net/html"
+	"io"
 	"log"
+	"net/http"
 	"regexp"
 	"strings"
 )
@@ -25,8 +28,9 @@ func (c *Client) handleUserMessageCommand(message *irc.Message) {
 		return
 	}
 
-	if matchForUrl(message.Parameter) != "" {
-		//TODO get page title
+	if url := matchForUrl(message.Parameter); url != "" {
+		c.handleUrl(url, initiator, message)
+		return
 	}
 
 	if strings.HasPrefix(message.Parameter, c.registeredBotName+" ") {
@@ -86,4 +90,66 @@ func (c *Client) handleCatFactUserCommand(initiator string, message *irc.Message
 	}
 	c.conn.Send(fmt.Sprintf("PRIVMSG %v :%v\n", location, GetCatFact()))
 
+}
+
+func (c *Client) handleUrl(url string, initiator string, message *irc.Message) {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		log.Printf("ERROR - Cannot create url %v: %v\n", url, err)
+		return
+	}
+	req.Header.Add("Accept", "text/html")
+	resp, err := c.hc.Do(req)
+	if err != nil {
+		log.Printf("ERROR - Requesting %v: %v\n", url, err)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("ERROR - Request to %v returned status: %v\n", url, resp.StatusCode)
+		return
+	}
+
+	title, err := getTitle(resp.Body)
+	if err != nil {
+		log.Printf("WARN - Cannot get title for %v: %v\n", url, err)
+		return
+	}
+
+	splitCommand := strings.Split(message.Parameter, " ")
+	location := splitCommand[0]
+	if location != fmt.Sprintf("#%v", c.config.Channel) {
+		location = initiator
+	}
+
+	if title != "" {
+		c.conn.Send(fmt.Sprintf("PRIVMSG %v :The title for %v is: %v\n", location, url, title))
+	} else {
+		log.Printf("WARN - No title for %v\n", url)
+	}
+
+}
+
+func getTitle(r io.Reader) (string, error) {
+	tokenizer := html.NewTokenizer(r)
+	for {
+		tokenType := tokenizer.Next()
+		token := tokenizer.Token()
+
+		switch tokenType {
+		case html.ErrorToken:
+			err := tokenizer.Err()
+			if err == io.EOF {
+				return "", nil
+			}
+			return "", err
+		case html.StartTagToken:
+			if token.Data == "title" {
+				if tokenizer.Next() == html.TextToken {
+					return tokenizer.Token().String(), nil
+				}
+			}
+		}
+	}
 }

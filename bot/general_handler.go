@@ -56,8 +56,8 @@ func (c *Client) handleJoinCommand(message *Message) {
 		return
 	}
 	initiator := strings.Split(message.Prefix, "!")[0]
+
 	_, err := c.db.GetUser(initiator)
-	log.Printf("DEBUG - GetUser(%v): %v\n", initiator, err)
 	if err == nil || err == sql.ErrNoRows {
 		err = c.db.UpdateUser(&storage.User{Name: initiator, Available: true, LastSeen: time.Now()})
 	} else {

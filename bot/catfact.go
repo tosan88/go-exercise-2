@@ -2,7 +2,7 @@ package bot
 
 import "math/rand"
 
-var randomText = []string{
+var catFacts = []string{
 	`Cats can drink salt water to survive: their kidneys can filter out salt!`,
 	`Cats sleep for about 70% of their lives.`,
 	`Disneyland owns over 200 cats.`,
@@ -47,5 +47,5 @@ var randomText = []string{
 }
 
 func GetCatFact() string {
-	return randomText[rand.Intn(len(randomText))]
+	return catFacts[rand.Intn(len(catFacts))]
 }

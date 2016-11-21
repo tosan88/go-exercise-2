@@ -7,6 +7,7 @@ import (
 	"github.com/tosan88/go-exercise-2/storage"
 	"log"
 	"math/rand"
+	"net/http"
 	"strings"
 	"time"
 )
@@ -19,6 +20,10 @@ type Conf struct {
 
 type handler func(*Client, *irc.Message)
 
+type httpClient interface {
+	Do(req *http.Request) (resp *http.Response, err error)
+}
+
 type Client struct {
 	config            *Conf
 	registeredBotName string
@@ -27,9 +32,10 @@ type Client struct {
 	shouldStop        chan bool
 	db                storage.Persister
 	handlers          map[string]handler
+	hc                httpClient
 }
 
-func New(config *Conf, db storage.DB) *Client {
+func New(config *Conf, db storage.DB, hc httpClient) *Client {
 	return &Client{
 		config:            config,
 		registeredBotName: config.BotName,
@@ -37,6 +43,7 @@ func New(config *Conf, db storage.DB) *Client {
 		shouldStop:        make(chan bool),
 		db:                db,
 		handlers:          getHandlers(),
+		hc:                hc,
 	}
 }
 

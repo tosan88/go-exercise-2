@@ -7,6 +7,7 @@ import (
 	"github.com/tosan88/go-exercise-2/bot"
 	"github.com/tosan88/go-exercise-2/storage"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"regexp"
@@ -76,11 +77,17 @@ func main() {
 			return
 		}
 
-		client := bot.New(&bot.Conf{
-			Server:  *server,
-			Channel: *channel,
-			BotName: *botName,
-		}, db)
+		client := bot.New(
+			&bot.Conf{
+				Server:  *server,
+				Channel: *channel,
+				BotName: *botName,
+			},
+			db,
+			&http.Client{
+				Timeout: 10 * time.Second,
+			},
+		)
 
 		var wg sync.WaitGroup
 		wg.Add(1)
